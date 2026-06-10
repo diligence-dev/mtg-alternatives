@@ -1,0 +1,15 @@
+# Build output
+mtg-alternatives
+
+# Database
+data.db
+
+# Uploaded images
+uploads/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
