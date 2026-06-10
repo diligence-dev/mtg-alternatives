@@ -1,10 +1,5 @@
 # prompts
 
-1)
-for future agent sessions summarize knowledge about
-- mtg-alternatives state of code into summary.md
-- scryfall api into scryfall-api.md
-
 2)
 cleanup simplify code. test nothing breaks
 
@@ -17,3 +12,5 @@ create review-notes.md with helpful info for human review of the generated code 
 - notes project for future agent sessions
 - cleanup code, simplify further
 - notes for human review, big picture overview, what is happening in which file
+
+- Scryfall cards without `image_uris.normal` are silently skipped (e.g., double-faced cards with `card_faces` only)

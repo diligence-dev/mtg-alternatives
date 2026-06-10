@@ -47,6 +47,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ListenAndServe(addr string) error {
-	fmt.Printf("Server listening on %s\n", addr)
+	fmt.Printf("server running - http://localhost%s/frontend\n", addr)
 	return http.ListenAndServe(addr, s)
 }
