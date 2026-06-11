@@ -19,7 +19,7 @@ Create single-page web app where users can find and upload alternative images of
 - exception: unabbreviated form is unusual/harder to understand/clunky (example: "app" good, "application" bad; "laser" good, "light amplification by stimulated emission of radiation" bad)
 
 ## uncertainty
-- if you are uncertain about an answer to a direct question, give the answer, but emphasize that you are uncertain about it
+- if uncertain about your answer to direct question, give answer, but emphasize uncertainty; if certain do not comment on (un)certainty
 
 # constraints
 
@@ -39,3 +39,6 @@ before implementing any new logic or a new route in a web app:
 when writing a file don't finish until there's
 - no trailing whitespace
 - newline at end of file
+
+## update agent docs
+- dont finish until @agent/summary.md was updated to reflect new project state
