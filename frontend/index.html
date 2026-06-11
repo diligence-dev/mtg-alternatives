@@ -119,6 +119,32 @@
             color: #ccc;
         }
 
+        .show-more-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .show-more-btn {
+            padding: 12px 40px;
+            font-size: 16px;
+            background: #0f3460;
+            color: #eee;
+            border: 2px solid #e94560;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .show-more-btn:hover {
+            background: #16213e;
+        }
+
+        .show-more-btn:disabled {
+            border-color: #555;
+            color: #555;
+            cursor: not-allowed;
+        }
+
         .detail-section {
             display: none;
             background: #16213e;
@@ -255,6 +281,10 @@
 
         <div id="results" class="card-grid"></div>
 
+        <div id="show-more-section" class="show-more-section" style="display: none;">
+            <button id="show-more-btn" class="show-more-btn">Show more</button>
+        </div>
+
         <div id="detail" class="detail-section">
             <div class="detail-header">
                 <img id="detail-card-image" class="detail-card-image" src="" alt="">
@@ -283,7 +313,14 @@
     </div>
 
     <script>
+        const PAGE_SIZE = 30;
+
         let selectedCard = null;
+        let allCards = [];
+        let displayedCount = 0;
+        let scryfallHasMore = false;
+        let scryfallNextPage = null;
+        let currentQuery = '';
 
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
@@ -291,6 +328,8 @@
         const detailSection = document.getElementById('detail');
         const errorMessage = document.getElementById('error-message');
         const loadingDiv = document.getElementById('loading');
+        const showMoreSection = document.getElementById('show-more-section');
+        const showMoreBtn = document.getElementById('show-more-btn');
         const alternativesGrid = document.getElementById('alternatives-grid');
         const alternativesLoading = document.getElementById('alternatives-loading');
         const noAlternatives = document.getElementById('no-alternatives');
@@ -302,7 +341,7 @@
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') handleSearch();
         });
-
+        showMoreBtn.addEventListener('click', handleShowMore);
         uploadForm.addEventListener('submit', handleUpload);
 
         function showError(message) {
@@ -369,6 +408,21 @@
             return altEl;
         }
 
+        function renderNextBatch() {
+            const end = Math.min(displayedCount + PAGE_SIZE, allCards.length);
+            for (let i = displayedCount; i < end; i++) {
+                resultsDiv.appendChild(createCardElement(allCards[i]));
+            }
+            displayedCount = end;
+            updateShowMoreButton();
+        }
+
+        function updateShowMoreButton() {
+            const canShowMore = displayedCount < allCards.length || scryfallHasMore;
+            showMoreSection.style.display = canShowMore ? 'block' : 'none';
+            showMoreBtn.disabled = false;
+        }
+
         async function handleSearch() {
             const query = searchInput.value.trim();
             if (!query) {
@@ -376,8 +430,16 @@
                 return;
             }
 
+            currentQuery = query;
+            allCards = [];
+            displayedCount = 0;
+            scryfallHasMore = false;
+            scryfallNextPage = null;
+
             loadingDiv.style.display = 'block';
             resultsDiv.innerHTML = '';
+            resultsDiv.className = 'card-grid';
+            showMoreSection.style.display = 'none';
             detailSection.classList.remove('visible');
             errorMessage.style.display = 'none';
 
@@ -389,24 +451,50 @@
                     throw new Error(data.details || 'Search failed');
                 }
 
-                const cards = data.data.map(toCard).filter(c => c.image);
-                if (cards.length === 0) {
-                    resultsDiv.textContent = 'No results found';
-                    resultsDiv.className = 'no-alternatives';
-                    return;
-                }
-
-                resultsDiv.className = 'card-grid';
-                cards.forEach(card => {
-                    resultsDiv.appendChild(createCardElement(card));
-                });
-
+                appendScryfallPage(data);
             } catch (error) {
                 showError(error.message);
                 resultsDiv.textContent = 'Search failed. Please try again.';
                 resultsDiv.className = 'no-alternatives';
             } finally {
                 loadingDiv.style.display = 'none';
+            }
+        }
+
+        function appendScryfallPage(data) {
+            const cards = data.data.map(toCard).filter(c => c.image);
+            allCards = allCards.concat(cards);
+            scryfallHasMore = data.has_more || false;
+            scryfallNextPage = data.next_page || null;
+
+            if (allCards.length === 0) {
+                resultsDiv.textContent = 'No results found';
+                resultsDiv.className = 'no-alternatives';
+                return;
+            }
+
+            resultsDiv.className = 'card-grid';
+            renderNextBatch();
+        }
+
+        async function handleShowMore() {
+            if (displayedCount >= allCards.length && scryfallHasMore && scryfallNextPage) {
+                showMoreBtn.disabled = true;
+                showMoreBtn.textContent = 'Loading...';
+                try {
+                    const response = await fetch(scryfallNextPage);
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.details || 'Failed to load more cards');
+                    }
+                    appendScryfallPage(data);
+                } catch (error) {
+                    showError(error.message);
+                } finally {
+                    showMoreBtn.textContent = 'Show more';
+                }
+            } else {
+                renderNextBatch();
             }
         }
 
