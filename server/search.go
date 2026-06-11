@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 type ScryfallCard struct {
@@ -30,10 +29,6 @@ type Card struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Image string `json:"image"`
-}
-
-var scryfallClient = &http.Client{
-	Timeout: 5 * time.Second,
 }
 
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +56,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	req.Header.Set("User-Agent", "MTGAlternatives/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := scryfallClient.Do(req)
+	resp, err := s.scryfallClient.Do(req)
 	if err != nil {
 		log.Printf("Request failed: %v", err)
 		sendJSONError(w, "Failed to search Scryfall", http.StatusInternalServerError)
