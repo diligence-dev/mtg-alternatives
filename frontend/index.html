@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MTG Alternatives</title>
     <style>
+        html {
+            scroll-behavior: smooth;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -487,6 +491,8 @@
             if (cardEl) cardEl.classList.add('selected');
 
             detailSection.classList.add('visible');
+            detailSection.scrollIntoView({ behavior: 'smooth' });
+
             const detailImg = document.getElementById('detail-card-image');
             detailImg.src = card.image;
 
