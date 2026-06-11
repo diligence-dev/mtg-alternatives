@@ -112,13 +112,6 @@
             display: block;
         }
 
-        .card-name {
-            padding: 10px;
-            font-size: 14px;
-            text-align: center;
-            color: #ccc;
-        }
-
         .show-more-section {
             text-align: center;
             margin-bottom: 40px;
@@ -167,11 +160,6 @@
             width: 200px;
             height: auto;
             border-radius: 8px;
-        }
-
-        .detail-card-name {
-            font-size: 24px;
-            color: #e94560;
         }
 
         .alternatives-section h3 {
@@ -288,7 +276,6 @@
         <div id="detail" class="detail-section">
             <div class="detail-header">
                 <img id="detail-card-image" class="detail-card-image" src="" alt="">
-                <h2 id="detail-card-name" class="detail-card-name"></h2>
             </div>
 
             <div class="alternatives-section">
@@ -364,7 +351,6 @@
         function toCard(raw) {
             return {
                 id: raw.id,
-                name: raw.name,
                 image: getCardImage(raw),
                 back_image: getCardBackImage(raw),
             };
@@ -377,7 +363,7 @@
 
             const img = document.createElement('img');
             img.src = card.image;
-            img.alt = card.name;
+            img.alt = 'Card artwork';
             img.loading = 'lazy';
 
             if (card.back_image) {
@@ -386,12 +372,7 @@
                 cardEl.addEventListener('mouseleave', () => { img.src = card.image; });
             }
 
-            const nameEl = document.createElement('div');
-            nameEl.className = 'card-name';
-            nameEl.textContent = card.name;
-
             cardEl.appendChild(img);
-            cardEl.appendChild(nameEl);
             cardEl.addEventListener('click', () => selectCard(card));
             return cardEl;
         }
@@ -517,8 +498,6 @@
                 detailImg.onmouseenter = null;
                 detailImg.onmouseleave = null;
             }
-
-            document.getElementById('detail-card-name').textContent = card.name;
 
             await loadAlternatives(card.id);
         }

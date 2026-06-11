@@ -88,6 +88,7 @@ Serves the embedded SPA from `frontend/`.
 - Scryfall search is called directly from the browser — no server-side proxy needed since Scryfall's API is CORS-friendly and requires no authentication
 - Double-faced cards (DFC) detected via `card_faces` — hover flips to show the back
 - Upload file cleanup on DB insert failure
+- Card names are not displayed or stored — cards are identified by image only (scryfall_id is the sole identifier)
 
 ## Known Limitations / Future Work
 
