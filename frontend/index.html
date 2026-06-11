@@ -313,6 +313,39 @@
             }, 5000);
         }
 
+        function createCardElement(card) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            cardEl.dataset.scryfallId = card.id;
+            cardEl.dataset.name = card.name;
+            cardEl.dataset.image = card.image;
+
+            const img = document.createElement('img');
+            img.src = card.image;
+            img.alt = card.name;
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'card-name';
+            nameEl.textContent = card.name;
+
+            cardEl.appendChild(img);
+            cardEl.appendChild(nameEl);
+            cardEl.addEventListener('click', () => selectCard(card));
+            return cardEl;
+        }
+
+        function createAlternativeElement(alt) {
+            const altEl = document.createElement('div');
+            altEl.className = 'alternative-card';
+
+            const img = document.createElement('img');
+            img.src = alt.url;
+            img.alt = 'Alternative artwork';
+
+            altEl.appendChild(img);
+            return altEl;
+        }
+
         async function handleSearch() {
             const query = searchInput.value.trim();
             if (!query) {
@@ -334,27 +367,20 @@
                 }
 
                 if (!data.cards || data.cards.length === 0) {
-                    resultsDiv.innerHTML = '<p class="no-alternatives">No results found</p>';
+                    resultsDiv.textContent = 'No results found';
+                    resultsDiv.className = 'no-alternatives';
                     return;
                 }
 
+                resultsDiv.className = 'card-grid';
                 data.cards.forEach(card => {
-                    const cardEl = document.createElement('div');
-                    cardEl.className = 'card';
-                    cardEl.dataset.scryfallId = card.id;
-                    cardEl.dataset.name = card.name;
-                    cardEl.dataset.image = card.image;
-                    cardEl.innerHTML = `
-                        <img src="${card.image}" alt="${card.name}">
-                        <div class="card-name">${card.name}</div>
-                    `;
-                    cardEl.addEventListener('click', () => selectCard(card));
-                    resultsDiv.appendChild(cardEl);
+                    resultsDiv.appendChild(createCardElement(card));
                 });
 
             } catch (error) {
                 showError(error.message);
-                resultsDiv.innerHTML = '<p class="no-alternatives">Search failed. Please try again.</p>';
+                resultsDiv.textContent = 'Search failed. Please try again.';
+                resultsDiv.className = 'no-alternatives';
             } finally {
                 loadingDiv.style.display = 'none';
             }
@@ -363,17 +389,14 @@
         async function selectCard(card) {
             selectedCard = card;
 
-            // Update UI for selected card
             document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-            const cardEl = document.querySelector(`.card[data-scryfall-id="${card.id}"]`);
+            const cardEl = document.querySelector(`.card[data-scryfall-id="${CSS.escape(card.id)}"]`);
             if (cardEl) cardEl.classList.add('selected');
 
-            // Show detail section
             detailSection.classList.add('visible');
             document.getElementById('detail-card-image').src = card.image;
             document.getElementById('detail-card-name').textContent = card.name;
 
-            // Load alternatives
             await loadAlternatives(card.id);
         }
 
@@ -396,15 +419,13 @@
                 }
 
                 data.alternatives.forEach(alt => {
-                    const altEl = document.createElement('div');
-                    altEl.className = 'alternative-card';
-                    altEl.innerHTML = `<img src="${alt.url}" alt="Alternative artwork">`;
-                    alternativesGrid.appendChild(altEl);
+                    alternativesGrid.appendChild(createAlternativeElement(alt));
                 });
 
             } catch (error) {
                 showError(error.message);
-                alternativesGrid.innerHTML = '<p class="no-alternatives">Failed to load alternatives</p>';
+                alternativesGrid.textContent = 'Failed to load alternatives';
+                alternativesGrid.className = 'no-alternatives';
             } finally {
                 alternativesLoading.style.display = 'none';
             }
@@ -424,14 +445,12 @@
                 return;
             }
 
-            // Validate file type
             const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
             if (!allowedTypes.includes(file.type)) {
                 showError('Invalid file type. Please upload a PNG, JPEG, or WebP image');
                 return;
             }
 
-            // Validate file size (5MB)
             if (file.size > 5 * 1024 * 1024) {
                 showError('File too large. Maximum size is 5MB');
                 return;
@@ -456,10 +475,8 @@
                     throw new Error(data.error || 'Upload failed');
                 }
 
-                // Refresh alternatives
                 await loadAlternatives(selectedCard.id);
 
-                // Reset form
                 fileInput.value = '';
                 showError('Alternative artwork uploaded successfully!');
 

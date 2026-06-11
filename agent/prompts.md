@@ -1,8 +1,5 @@
 # prompts
 
-2)
-cleanup simplify code. test nothing breaks
-
 3)
 create review-notes.md with helpful info for human review of the generated code in this project. big picture system overview, whats happening in each file
 
