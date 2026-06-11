@@ -1,6 +1,11 @@
 # project goal
 Create single-page web app where users can find and upload alternative images of existing magic the gathering cards. Read agent/summary.md to get up to speed with the current status of the code
 
+# bootstrapping
+- read @agent/summary.md for code overview
+- never build manually, assume `air` is running, if it is not, run `air`
+- say "done" once you have finished all tasks and all necessary checks succeeded
+
 # values
 ## simplicity - less is better
 - less files
@@ -27,5 +32,10 @@ Create single-page web app where users can find and upload alternative images of
 
 ## test first
 before implementing any new logic or a new route in a web app:
-1. write test, run test, must fail; don't continue unless test ran and failed
-2. implement, run test, must succeed; don't continue/finish unless test from step 1 ran again and succeeded
+1. write test, run tests, new test must fail; don't continue unless tests ran and new test failed
+2. implement, run tests, all must succeed; don't continue/finish unless all tests succeed, including test from step 1
+
+## clean code
+when writing a file don't finish until there's
+- no trailing whitespace
+- newline at end of file
