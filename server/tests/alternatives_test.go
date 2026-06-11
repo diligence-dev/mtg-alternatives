@@ -16,7 +16,7 @@ import (
 )
 
 func TestGetAlternatives_MissingScryfallID(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := httptest.NewRequest("GET", "/api/alternatives", nil)
 	w := httptest.NewRecorder()
@@ -34,7 +34,7 @@ func TestGetAlternatives_MissingScryfallID(t *testing.T) {
 }
 
 func TestGetAlternatives_ReturnsEmptyList(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := httptest.NewRequest("GET", "/api/alternatives?scryfall_id=test-card", nil)
 	w := httptest.NewRecorder()
@@ -54,7 +54,7 @@ func TestGetAlternatives_ReturnsEmptyList(t *testing.T) {
 }
 
 func TestGetAlternatives_ReturnsStoredAlternatives(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	server.InsertAlternative(srv.DB(), "card-1", "image1.png")
 	server.InsertAlternative(srv.DB(), "card-1", "image2.png")
@@ -80,7 +80,7 @@ func TestGetAlternatives_ReturnsStoredAlternatives(t *testing.T) {
 }
 
 func TestGetAlternatives_DeleteMethod(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := httptest.NewRequest("DELETE", "/api/alternatives?scryfall_id=test", nil)
 	w := httptest.NewRecorder()
@@ -92,7 +92,7 @@ func TestGetAlternatives_DeleteMethod(t *testing.T) {
 }
 
 func TestUpload_MissingScryfallID(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := newUploadRequest(t, "", "test.png", "image/png", []byte("data"))
 	w := httptest.NewRecorder()
@@ -110,7 +110,7 @@ func TestUpload_MissingScryfallID(t *testing.T) {
 }
 
 func TestUpload_MissingFile(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
@@ -134,7 +134,7 @@ func TestUpload_MissingFile(t *testing.T) {
 }
 
 func TestUpload_WrongFileType(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := newUploadRequest(t, "card-1", "test.gif", "image/gif", []byte("GIF89a fake"))
 	w := httptest.NewRecorder()
@@ -152,7 +152,7 @@ func TestUpload_WrongFileType(t *testing.T) {
 }
 
 func TestUpload_Success(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := newUploadRequest(t, "card-1", "test.png", "image/png", []byte("fake png data"))
 	w := httptest.NewRecorder()
@@ -189,7 +189,7 @@ func TestUpload_Success(t *testing.T) {
 }
 
 func TestUpload_FilenameIsUUID(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := newUploadRequest(t, "card-1", "my-art.png", "image/png", []byte("data"))
 	w := httptest.NewRecorder()
@@ -210,7 +210,7 @@ func TestUpload_FilenameIsUUID(t *testing.T) {
 }
 
 func TestUpload_JpegAccepted(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := newUploadRequest(t, "card-1", "test.jpg", "image/jpeg", []byte("fake jpeg data"))
 	w := httptest.NewRecorder()
@@ -222,7 +222,7 @@ func TestUpload_JpegAccepted(t *testing.T) {
 }
 
 func TestUpload_WebpAccepted(t *testing.T) {
-	srv := newTestServer(t, "")
+	srv := newTestServer(t)
 
 	req := newUploadRequest(t, "card-1", "test.webp", "image/webp", []byte("fake webp data"))
 	w := httptest.NewRecorder()

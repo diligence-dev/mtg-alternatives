@@ -8,12 +8,14 @@ Single Go binary that serves a SPA for searching Magic: The Gathering cards (via
 
 ```
 Browser <---> Go server <---internal---> SQLite (data.db) + uploads/
-                      <---external---> Scryfall API
+      |
+      +---> Scryfall API (directly from browser, no proxy)
 ```
 
 - Single Go binary with embedded frontend (via `go:embed`)
 - SQLite for metadata, filesystem for uploaded images
 - No external database or build tools required
+- Browser calls Scryfall API directly (Scryfall sets CORS `Access-Control-Allow-Origin: *`)
 
 ## Project Layout
 
@@ -22,7 +24,6 @@ mtg-alternatives/
 ├── main.go              # entry point, embeds frontend/, wires everything
 ├── server/
 │   ├── server.go        # Server struct, route registration, static serving
-│   ├── search.go        # GET /api/search — Scryfall proxy
 │   ├── alternatives.go  # GET/POST /api/alternatives, sendJSONError helper
 │   └── db.go            # SQLite init, schema, queries
 ├── frontend/
@@ -61,12 +62,6 @@ Index on `scryfall_id`.
 
 ## API Endpoints
 
-### GET /api/search?q={query}
-
-Proxies to Scryfall `/cards/search`. Returns `{ "cards": [{ "id", "name", "image" }] }`.
-
-Headers sent to Scryfall: `User-Agent: MTGAlternatives/1.0`, `Accept: application/json`.
-
 ### GET /api/alternatives?scryfall_id={id}
 
 Returns `{ "alternatives": [{ "id", "url", "uploaded_at" }] }`.
@@ -90,7 +85,8 @@ Serves the embedded SPA from `frontend/`.
 - Frontend is embedded via `go:embed` in `main.go` (not `server/`) because embed paths cannot use `..`
 - `Server` receives `fs.FS` for frontend rather than embedding directly in the package
 - All error responses are JSON (`{ "error": "..." }`) — frontend always parses JSON
-- `sendJSONError` helper defined in `alternatives.go`, used by `search.go` as well
+- Scryfall search is called directly from the browser — no server-side proxy needed since Scryfall's API is CORS-friendly and requires no authentication
+- Double-faced cards (DFC) detected via `card_faces` — hover flips to show the back
 - Upload file cleanup on DB insert failure
 
 ## Known Limitations / Future Work
@@ -99,4 +95,3 @@ Serves the embedded SPA from `frontend/`.
 - No rate limiting on Scryfall requests (they ask for 50-100ms between requests)
 - No authentication or authorization
 - No image resizing or optimization
-- Scryfall cards without `image_uris.normal` are silently skipped (e.g., double-faced cards with `card_faces` only)
