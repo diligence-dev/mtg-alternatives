@@ -139,6 +139,61 @@ func TestSearch_SkipsCardsWithoutImages(t *testing.T) {
 	}
 }
 
+func TestSearch_DoubleFacedCardUsesFaceImages(t *testing.T) {
+	mock := mockScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{
+				{
+					"id":         "dfc-1",
+					"name":       "Front Side // Back Side",
+					"image_uris": nil,
+					"card_faces": []map[string]interface{}{
+						{
+							"name": "Front Side",
+							"image_uris": map[string]string{
+								"normal": "https://example.com/front.png",
+							},
+						},
+						{
+							"name": "Back Side",
+							"image_uris": map[string]string{
+								"normal": "https://example.com/back.png",
+							},
+						},
+					},
+				},
+			},
+		})
+	})
+
+	req := httptest.NewRequest("GET", "/api/search?q=dfc", nil)
+	w := httptest.NewRecorder()
+	mock.srv.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var body struct {
+		Cards []server.Card `json:"cards"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &body)
+	if len(body.Cards) != 1 {
+		t.Fatalf("expected 1 card, got %d", len(body.Cards))
+	}
+	card := body.Cards[0]
+	if card.ID != "dfc-1" {
+		t.Errorf("expected id 'dfc-1', got %q", card.ID)
+	}
+	if card.Image != "https://example.com/front.png" {
+		t.Errorf("expected front image, got %q", card.Image)
+	}
+	if card.BackImage != "https://example.com/back.png" {
+		t.Errorf("expected back image 'https://example.com/back.png', got %q", card.BackImage)
+	}
+}
+
 func TestSearch_ScryfallError(t *testing.T) {
 	mock := mockScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

@@ -14,6 +14,11 @@ type ScryfallCard struct {
 	ImageUris struct {
 		Normal string `json:"normal"`
 	} `json:"image_uris"`
+	CardFaces []struct {
+		ImageUris struct {
+			Normal string `json:"normal"`
+		} `json:"image_uris"`
+	} `json:"card_faces"`
 }
 
 type ScryfallResponse struct {
@@ -21,9 +26,10 @@ type ScryfallResponse struct {
 }
 
 type Card struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Image     string `json:"image"`
+	BackImage string `json:"back_image,omitempty"`
 }
 
 func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -87,10 +93,25 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	cards := make([]Card, 0, len(scryfallResp.Data))
 	for _, c := range scryfallResp.Data {
-		if c.ImageUris.Normal != "" {
-			cards = append(cards, Card{ID: c.ID, Name: c.Name, Image: c.ImageUris.Normal})
+		card := toCard(c)
+		if card.Image != "" {
+			cards = append(cards, card)
 		}
 	}
 
 	json.NewEncoder(w).Encode(map[string][]Card{"cards": cards})
+}
+
+func toCard(c ScryfallCard) Card {
+	if c.ImageUris.Normal != "" {
+		return Card{ID: c.ID, Name: c.Name, Image: c.ImageUris.Normal}
+	}
+	if len(c.CardFaces) == 0 || c.CardFaces[0].ImageUris.Normal == "" {
+		return Card{ID: c.ID, Name: c.Name}
+	}
+	card := Card{ID: c.ID, Name: c.Name, Image: c.CardFaces[0].ImageUris.Normal}
+	if len(c.CardFaces) > 1 && c.CardFaces[1].ImageUris.Normal != "" {
+		card.BackImage = c.CardFaces[1].ImageUris.Normal
+	}
+	return card
 }

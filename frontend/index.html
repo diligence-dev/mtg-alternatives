@@ -319,10 +319,18 @@
             cardEl.dataset.scryfallId = card.id;
             cardEl.dataset.name = card.name;
             cardEl.dataset.image = card.image;
+            cardEl.dataset.backImage = card.back_image || '';
 
             const img = document.createElement('img');
             img.src = card.image;
             img.alt = card.name;
+            img.loading = 'lazy';
+
+            if (card.back_image) {
+                new Image().src = card.back_image;
+                cardEl.addEventListener('mouseenter', () => { img.src = card.back_image; });
+                cardEl.addEventListener('mouseleave', () => { img.src = card.image; });
+            }
 
             const nameEl = document.createElement('div');
             nameEl.className = 'card-name';
@@ -394,7 +402,18 @@
             if (cardEl) cardEl.classList.add('selected');
 
             detailSection.classList.add('visible');
-            document.getElementById('detail-card-image').src = card.image;
+            const detailImg = document.getElementById('detail-card-image');
+            detailImg.src = card.image;
+
+            if (card.back_image) {
+                new Image().src = card.back_image;
+                detailImg.onmouseenter = () => { detailImg.src = card.back_image; };
+                detailImg.onmouseleave = () => { detailImg.src = card.image; };
+            } else {
+                detailImg.onmouseenter = null;
+                detailImg.onmouseleave = null;
+            }
+
             document.getElementById('detail-card-name').textContent = card.name;
 
             await loadAlternatives(card.id);
