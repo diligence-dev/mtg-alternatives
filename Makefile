@@ -1,7 +1,7 @@
 .PHONY: test build run
 
 test:
-	go test -v ./server/...
+	go test ./server/tests/
 
 build:
 	go build -o mtg-alternatives .
