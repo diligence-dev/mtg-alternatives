@@ -82,7 +82,9 @@ func TestSearch_Success(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var body server.SearchResponse
+	var body struct {
+		Cards []server.Card `json:"cards"`
+	}
 	json.Unmarshal(w.Body.Bytes(), &body)
 	if len(body.Cards) != 1 {
 		t.Fatalf("expected 1 card, got %d", len(body.Cards))
@@ -125,7 +127,9 @@ func TestSearch_SkipsCardsWithoutImages(t *testing.T) {
 	w := httptest.NewRecorder()
 	mock.srv.ServeHTTP(w, req)
 
-	var body server.SearchResponse
+	var body struct {
+		Cards []server.Card `json:"cards"`
+	}
 	json.Unmarshal(w.Body.Bytes(), &body)
 	if len(body.Cards) != 1 {
 		t.Fatalf("expected 1 card (skip no-image), got %d", len(body.Cards))

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/diligence-dev/mtg-alternatives/server"
 )
@@ -33,9 +34,7 @@ func newTestServer(t *testing.T, scryfallURL string) *server.Server {
 			Transport: &scryfallURLRewriter{baseURL: scryfallURL},
 		}
 	} else {
-		client = &http.Client{
-			Timeout: 5 * 1000000000,
-		}
+		client = &http.Client{Timeout: 5 * time.Second}
 	}
 
 	return server.NewServerWithClient(db, uploadsDir, nil, client)
@@ -46,7 +45,10 @@ type scryfallURLRewriter struct {
 }
 
 func (r *scryfallURLRewriter) RoundTrip(req *http.Request) (*http.Response, error) {
-	newReq, _ := http.NewRequest(req.Method, r.baseURL+req.URL.Path+"?"+req.URL.RawQuery, req.Body)
+	newReq, err := http.NewRequest(req.Method, r.baseURL+req.URL.Path+"?"+req.URL.RawQuery, req.Body)
+	if err != nil {
+		return nil, err
+	}
 	newReq.Header = req.Header.Clone()
 	return http.DefaultTransport.RoundTrip(newReq)
 }

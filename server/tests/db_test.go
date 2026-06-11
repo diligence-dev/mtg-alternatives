@@ -58,40 +58,42 @@ func TestGetAlternatives_Empty(t *testing.T) {
 func TestInsertAndGetAlternatives(t *testing.T) {
 	db := openTestDB(t)
 
-	scryfallID := "test-card-123"
-	filename := "abc-123.png"
-
-	id, err := server.InsertAlternative(db, scryfallID, filename)
+	alt, err := server.InsertAlternative(db, "test-card-123", "abc-123.png")
 	if err != nil {
 		t.Fatalf("InsertAlternative returned error: %v", err)
 	}
-	if id != 1 {
-		t.Fatalf("expected id 1, got %d", id)
+	if alt.ID != 1 {
+		t.Fatalf("expected id 1, got %d", alt.ID)
+	}
+	if alt.ScryfallID != "test-card-123" {
+		t.Errorf("expected scryfall_id 'test-card-123', got %q", alt.ScryfallID)
+	}
+	if alt.Filename != "abc-123.png" {
+		t.Errorf("expected filename 'abc-123.png', got %q", alt.Filename)
 	}
 
-	results, err := server.GetAlternatives(db, scryfallID)
+	results, err := server.GetAlternatives(db, "test-card-123")
 	if err != nil {
 		t.Fatalf("GetAlternatives returned error: %v", err)
 	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
-	if results[0].ScryfallID != scryfallID {
-		t.Errorf("expected scryfall_id %q, got %q", scryfallID, results[0].ScryfallID)
+	if results[0].ScryfallID != "test-card-123" {
+		t.Errorf("expected scryfall_id 'test-card-123', got %q", results[0].ScryfallID)
 	}
-	if results[0].Filename != filename {
-		t.Errorf("expected filename %q, got %q", filename, results[0].Filename)
+	if results[0].Filename != "abc-123.png" {
+		t.Errorf("expected filename 'abc-123.png', got %q", results[0].Filename)
 	}
 }
 
 func TestGetAlternatives_MultipleForSameCard(t *testing.T) {
 	db := openTestDB(t)
 
-	scryfallID := "test-card-123"
-	server.InsertAlternative(db, scryfallID, "file1.png")
-	server.InsertAlternative(db, scryfallID, "file2.png")
+	server.InsertAlternative(db, "test-card-123", "file1.png")
+	server.InsertAlternative(db, "test-card-123", "file2.png")
 
-	results, err := server.GetAlternatives(db, scryfallID)
+	results, err := server.GetAlternatives(db, "test-card-123")
 	if err != nil {
 		t.Fatalf("GetAlternatives returned error: %v", err)
 	}

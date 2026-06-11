@@ -3,14 +3,15 @@ package server
 import (
 	"database/sql"
 	"time"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Alternative struct {
-	ID          int       `json:"id"`
-	ScryfallID  string    `json:"scryfall_id"`
-	Filename    string    `json:"filename"`
-	UploadedAt  time.Time `json:"uploaded_at"`
+	ID         int       `json:"id"`
+	ScryfallID string    `json:"scryfall_id"`
+	Filename   string    `json:"filename"`
+	UploadedAt time.Time `json:"uploaded_at"`
 }
 
 func InitDB(path string) (*sql.DB, error) {
@@ -21,9 +22,9 @@ func InitDB(path string) (*sql.DB, error) {
 
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS alternatives (
-			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			id          INTEGER PRIMARY KEY AUTOINCREMENT,
 			scryfall_id TEXT NOT NULL,
-			filename   TEXT NOT NULL,
+			filename    TEXT NOT NULL,
 			uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE INDEX IF NOT EXISTS idx_scryfall_id ON alternatives(scryfall_id);
@@ -50,28 +51,34 @@ func GetAlternatives(db *sql.DB, scryfallID string) ([]Alternative, error) {
 	var alternatives []Alternative
 	for rows.Next() {
 		var alt Alternative
-		err := rows.Scan(&alt.ID, &alt.ScryfallID, &alt.Filename, &alt.UploadedAt)
-		if err != nil {
+		if err := rows.Scan(&alt.ID, &alt.ScryfallID, &alt.Filename, &alt.UploadedAt); err != nil {
 			return nil, err
 		}
 		alternatives = append(alternatives, alt)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return alternatives, nil
+	return alternatives, rows.Err()
 }
 
-func InsertAlternative(db *sql.DB, scryfallID, filename string) (int64, error) {
+func InsertAlternative(db *sql.DB, scryfallID, filename string) (Alternative, error) {
+	now := time.Now().UTC().Truncate(time.Second)
 	result, err := db.Exec(`
-		INSERT INTO alternatives (scryfall_id, filename)
-		VALUES (?, ?)
-	`, scryfallID, filename)
+		INSERT INTO alternatives (scryfall_id, filename, uploaded_at)
+		VALUES (?, ?, ?)
+	`, scryfallID, filename, now)
 	if err != nil {
-		return 0, err
+		return Alternative{}, err
 	}
 
-	return result.LastInsertId()
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Alternative{}, err
+	}
+
+	return Alternative{
+		ID:         int(id),
+		ScryfallID: scryfallID,
+		Filename:   filename,
+		UploadedAt: now,
+	}, nil
 }

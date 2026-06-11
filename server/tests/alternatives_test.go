@@ -44,7 +44,9 @@ func TestGetAlternatives_ReturnsEmptyList(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var body server.AlternativesResponse
+	var body struct {
+		Alternatives []server.AlternativeResponse `json:"alternatives"`
+	}
 	json.Unmarshal(w.Body.Bytes(), &body)
 	if len(body.Alternatives) != 0 {
 		t.Fatalf("expected 0 alternatives, got %d", len(body.Alternatives))
@@ -65,7 +67,9 @@ func TestGetAlternatives_ReturnsStoredAlternatives(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var body server.AlternativesResponse
+	var body struct {
+		Alternatives []server.AlternativeResponse `json:"alternatives"`
+	}
 	json.Unmarshal(w.Body.Bytes(), &body)
 	if len(body.Alternatives) != 2 {
 		t.Fatalf("expected 2 alternatives, got %d", len(body.Alternatives))
@@ -158,7 +162,9 @@ func TestUpload_Success(t *testing.T) {
 		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var body server.UploadResponse
+	var body struct {
+		Alternative server.AlternativeResponse `json:"alternative"`
+	}
 	json.Unmarshal(w.Body.Bytes(), &body)
 	if body.Alternative.ID == 0 {
 		t.Fatal("expected non-zero id")
@@ -170,14 +176,12 @@ func TestUpload_Success(t *testing.T) {
 		t.Error("expected uploaded_at to be set")
 	}
 
-	// Verify file was saved to disk
 	filename := strings.TrimPrefix(body.Alternative.URL, "/uploads/")
 	filePath := filepath.Join(srv.UploadsDir(), filename)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		t.Fatal("uploaded file was not saved to disk")
 	}
 
-	// Verify DB record was created
 	results, _ := server.GetAlternatives(srv.DB(), "card-1")
 	if len(results) != 1 {
 		t.Fatalf("expected 1 DB record, got %d", len(results))
@@ -191,7 +195,9 @@ func TestUpload_FilenameIsUUID(t *testing.T) {
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
-	var body server.UploadResponse
+	var body struct {
+		Alternative server.AlternativeResponse `json:"alternative"`
+	}
 	json.Unmarshal(w.Body.Bytes(), &body)
 
 	filename := strings.TrimPrefix(body.Alternative.URL, "/uploads/")
