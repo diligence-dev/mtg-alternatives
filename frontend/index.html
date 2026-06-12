@@ -327,6 +327,9 @@
         let scryfallHasMore = false;
         let scryfallNextPage = null;
         let altScryfallIds = new Set();
+        let browseMode = false;
+        let browsePage = 1;
+        let browseTotal = 0;
 
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
@@ -351,6 +354,8 @@
         });
         showMoreBtn.addEventListener('click', handleShowMore);
         uploadForm.addEventListener('submit', handleUpload);
+
+        handleSearch();
 
         function showError(message) {
             errorMessage.textContent = message;
@@ -379,6 +384,14 @@
                 name: getCardName(raw),
                 image: getCardImage(raw),
                 back_image: getCardBackImage(raw),
+            };
+        }
+
+        function cardEntryToCard(entry) {
+            return {
+                id: entry.scryfall_id,
+                name: entry.name,
+                image: `https://api.scryfall.com/cards/${entry.scryfall_id}?format=image&version=normal`,
             };
         }
 
@@ -428,6 +441,30 @@
             return { withAlts, withoutAlts };
         }
 
+        function resetState() {
+            allCards = [];
+            cardsWithAlts = [];
+            cardsWithoutAlts = [];
+            displayedWithAlts = 0;
+            displayedWithoutAlts = 0;
+            scryfallHasMore = false;
+            scryfallNextPage = null;
+            browseMode = false;
+            browsePage = 1;
+            browseTotal = 0;
+
+            resultsWithAlts.innerHTML = '';
+            resultsWithAlts.className = 'card-grid';
+            resultsWithAlts.style.display = '';
+            noAltDivider.style.display = 'none';
+            resultsWithoutAlts.innerHTML = '';
+            resultsWithoutAlts.className = 'card-grid';
+            resultsWithoutAlts.style.display = '';
+            showMoreSection.style.display = 'none';
+            detailSection.classList.remove('visible');
+            errorMessage.style.display = 'none';
+        }
+
         function renderBatch() {
             const endWith = Math.min(displayedWithAlts + PAGE_SIZE, cardsWithAlts.length);
             for (let i = displayedWithAlts; i < endWith; i++) {
@@ -447,8 +484,13 @@
         }
 
         function updateShowMoreButton() {
-            const allDisplayed = displayedWithAlts >= cardsWithAlts.length && displayedWithoutAlts >= cardsWithoutAlts.length;
-            const canShowMore = !allDisplayed || scryfallHasMore;
+            let canShowMore;
+            if (browseMode) {
+                canShowMore = browsePage * PAGE_SIZE < browseTotal;
+            } else {
+                const allDisplayed = displayedWithAlts >= cardsWithAlts.length && displayedWithoutAlts >= cardsWithoutAlts.length;
+                canShowMore = !allDisplayed || scryfallHasMore;
+            }
             showMoreSection.style.display = canShowMore ? 'block' : 'none';
             showMoreBtn.disabled = false;
         }
@@ -461,39 +503,27 @@
 
         async function handleSearch() {
             const query = searchInput.value.trim();
-            if (!query) {
-                showError('Please enter a search query');
-                return;
-            }
 
-            allCards = [];
-            cardsWithAlts = [];
-            cardsWithoutAlts = [];
-            displayedWithAlts = 0;
-            displayedWithoutAlts = 0;
-            scryfallHasMore = false;
-            scryfallNextPage = null;
-
+            resetState();
             loadingDiv.style.display = 'block';
-            resultsWithAlts.innerHTML = '';
-            noAltDivider.style.display = 'none';
-            resultsWithoutAlts.innerHTML = '';
-            showMoreSection.style.display = 'none';
-            detailSection.classList.remove('visible');
-            errorMessage.style.display = 'none';
 
             try {
-                const cards = await fetchCardsWithAlternatives();
-                altScryfallIds = new Set(cards.map(c => c.scryfall_id));
+                if (query === '') {
+                    browseMode = true;
+                    await loadBrowsePage();
+                } else {
+                    const cards = await fetchCardsWithAlternatives();
+                    altScryfallIds = new Set(cards.map(c => c.scryfall_id));
 
-                const response = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`);
-                const data = await response.json();
+                    const response = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.details || 'Search failed');
+                    if (!response.ok) {
+                        throw new Error(data.details || 'Search failed');
+                    }
+
+                    appendScryfallPage(data);
                 }
-
-                appendScryfallPage(data);
             } catch (error) {
                 showError(error.message);
                 resultsWithAlts.textContent = 'Search failed. Please try again.';
@@ -501,6 +531,26 @@
             } finally {
                 loadingDiv.style.display = 'none';
             }
+        }
+
+        async function loadBrowsePage() {
+            const response = await fetch(`/api/cards?page=${browsePage}&limit=${PAGE_SIZE}`);
+            const data = await response.json();
+
+            browseTotal = data.total;
+
+            const cards = (data.cards || []).map(cardEntryToCard);
+            cardsWithAlts = cardsWithAlts.concat(cards);
+            displayedWithAlts = cardsWithAlts.length;
+
+            for (const card of cards) {
+                resultsWithAlts.appendChild(createCardElement(card));
+            }
+
+            noAltDivider.style.display = 'none';
+            resultsWithoutAlts.style.display = 'none';
+
+            updateShowMoreButton();
         }
 
         function appendScryfallPage(data) {
@@ -528,30 +578,41 @@
                 return;
             }
 
-            resultsWithAlts.className = 'card-grid';
-            resultsWithoutAlts.className = 'card-grid';
             renderBatch();
         }
 
         async function handleShowMore() {
-            const allDisplayed = displayedWithAlts >= cardsWithAlts.length && displayedWithoutAlts >= cardsWithoutAlts.length;
-            if (allDisplayed && scryfallHasMore && scryfallNextPage) {
+            if (browseMode) {
                 showMoreBtn.disabled = true;
                 showMoreBtn.textContent = 'Loading...';
                 try {
-                    const response = await fetch(scryfallNextPage);
-                    const data = await response.json();
-                    if (!response.ok) {
-                        throw new Error(data.details || 'Failed to load more cards');
-                    }
-                    appendScryfallPage(data);
+                    browsePage++;
+                    await loadBrowsePage();
                 } catch (error) {
                     showError(error.message);
                 } finally {
                     showMoreBtn.textContent = 'Show more';
                 }
             } else {
-                renderBatch();
+                const allDisplayed = displayedWithAlts >= cardsWithAlts.length && displayedWithoutAlts >= cardsWithoutAlts.length;
+                if (allDisplayed && scryfallHasMore && scryfallNextPage) {
+                    showMoreBtn.disabled = true;
+                    showMoreBtn.textContent = 'Loading...';
+                    try {
+                        const response = await fetch(scryfallNextPage);
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.details || 'Failed to load more cards');
+                        }
+                        appendScryfallPage(data);
+                    } catch (error) {
+                        showError(error.message);
+                    } finally {
+                        showMoreBtn.textContent = 'Show more';
+                    }
+                } else {
+                    renderBatch();
+                }
             }
         }
 

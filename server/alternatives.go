@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"path/filepath"
 
 	"github.com/google/uuid"
@@ -143,16 +144,26 @@ func (s *Server) uploadAlternative(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCards(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	cards, err := GetCardsWithAlternatives(s.db)
+	page := 1
+	limit := 30
+
+	if p := r.URL.Query().Get("page"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil && v > 0 {
+			page = v
+		}
+	}
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 100 {
+			limit = v
+		}
+	}
+
+	result, err := GetCardsWithAlternativesPaginated(s.db, page, limit)
 	if err != nil {
 		log.Printf("Failed to fetch cards: %v", err)
 		sendJSONError(w, "Failed to fetch cards", http.StatusInternalServerError)
 		return
 	}
 
-	if cards == nil {
-		cards = []CardEntry{}
-	}
-
-	json.NewEncoder(w).Encode(map[string][]CardEntry{"cards": cards})
+	json.NewEncoder(w).Encode(result)
 }

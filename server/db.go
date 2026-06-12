@@ -20,6 +20,11 @@ type CardEntry struct {
 	Name       string `json:"name"`
 }
 
+type CardsPage struct {
+	Cards []CardEntry `json:"cards"`
+	Total int         `json:"total"`
+}
+
 func InitDB(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
@@ -123,4 +128,39 @@ func GetCardsWithAlternatives(db *sql.DB) ([]CardEntry, error) {
 	}
 
 	return cards, rows.Err()
+}
+
+func GetCardsWithAlternativesPaginated(db *sql.DB, page, limit int) (CardsPage, error) {
+	var total int
+	err := db.QueryRow(`SELECT COUNT(DISTINCT scryfall_id) FROM alternatives`).Scan(&total)
+	if err != nil {
+		return CardsPage{}, err
+	}
+
+	offset := (page - 1) * limit
+	rows, err := db.Query(`
+		SELECT DISTINCT scryfall_id, name
+		FROM alternatives
+		ORDER BY uploaded_at DESC
+		LIMIT ? OFFSET ?
+	`, limit, offset)
+	if err != nil {
+		return CardsPage{}, err
+	}
+	defer rows.Close()
+
+	var cards []CardEntry
+	for rows.Next() {
+		var c CardEntry
+		if err := rows.Scan(&c.ScryfallID, &c.Name); err != nil {
+			return CardsPage{}, err
+		}
+		cards = append(cards, c)
+	}
+
+	if cards == nil {
+		cards = []CardEntry{}
+	}
+
+	return CardsPage{Cards: cards, Total: total}, rows.Err()
 }

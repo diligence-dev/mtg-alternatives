@@ -77,9 +77,9 @@ Multipart form: `scryfall_id` (string), `name` (string), `image` (file). Max 5MB
 
 Returns 201 with created alternative record.
 
-### GET /api/cards
+### GET /api/cards?page={page}&limit={limit}
 
-Returns `{ "cards": [{ "scryfall_id", "name" }] }` — all distinct cards that have at least one alternative uploaded.
+Returns `{ "cards": [{ "scryfall_id", "name" }], "total": N }` — paginated distinct cards with at least one alternative. Default page=1, limit=30, max limit=100. Ordered by most recent upload first.
 
 ### GET /uploads/{filename}
 
@@ -116,11 +116,13 @@ fly deploy
 - Upload file cleanup on DB insert failure
 - Card names are stored in the database alongside scryfall_id, provided by the frontend from Scryfall API data
 - Search results are sent as raw user query to Scryfall (not augmented). Frontend partitions results using `/api/cards` into two sections: cards with alternatives shown first, then a divider "The following cards have no alternatives yet", then remaining cards
+- Empty search query shows all cards with alternatives, paginated via `/api/cards` endpoint (page size 30). Card images are fetched from Scryfall's image redirect URL (`/cards/{id}?format=image&version=normal`)
+- On page load, an empty search is automatically submitted to show the browse view
 
 ## Testing
 
 ```sh
-go test ./server/tests/         # Go backend tests (24 tests)
+go test ./server/tests/         # Go backend tests (28 tests)
 ```
 
 ## Known Limitations / Future Work
