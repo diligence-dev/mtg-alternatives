@@ -58,7 +58,7 @@ func TestGetAlternatives_Empty(t *testing.T) {
 func TestInsertAndGetAlternatives(t *testing.T) {
 	db := openTestDB(t)
 
-	alt, err := server.InsertAlternative(db, "test-card-123", "abc-123.png")
+	alt, err := server.InsertAlternative(db, "test-card-123", "Lightning Bolt", "abc-123.png")
 	if err != nil {
 		t.Fatalf("InsertAlternative returned error: %v", err)
 	}
@@ -67,6 +67,9 @@ func TestInsertAndGetAlternatives(t *testing.T) {
 	}
 	if alt.ScryfallID != "test-card-123" {
 		t.Errorf("expected scryfall_id 'test-card-123', got %q", alt.ScryfallID)
+	}
+	if alt.Name != "Lightning Bolt" {
+		t.Errorf("expected name 'Lightning Bolt', got %q", alt.Name)
 	}
 	if alt.Filename != "abc-123.png" {
 		t.Errorf("expected filename 'abc-123.png', got %q", alt.Filename)
@@ -82,6 +85,9 @@ func TestInsertAndGetAlternatives(t *testing.T) {
 	if results[0].ScryfallID != "test-card-123" {
 		t.Errorf("expected scryfall_id 'test-card-123', got %q", results[0].ScryfallID)
 	}
+	if results[0].Name != "Lightning Bolt" {
+		t.Errorf("expected name 'Lightning Bolt', got %q", results[0].Name)
+	}
 	if results[0].Filename != "abc-123.png" {
 		t.Errorf("expected filename 'abc-123.png', got %q", results[0].Filename)
 	}
@@ -90,8 +96,8 @@ func TestInsertAndGetAlternatives(t *testing.T) {
 func TestGetAlternatives_MultipleForSameCard(t *testing.T) {
 	db := openTestDB(t)
 
-	server.InsertAlternative(db, "test-card-123", "file1.png")
-	server.InsertAlternative(db, "test-card-123", "file2.png")
+	server.InsertAlternative(db, "test-card-123", "Lightning Bolt", "file1.png")
+	server.InsertAlternative(db, "test-card-123", "Lightning Bolt", "file2.png")
 
 	results, err := server.GetAlternatives(db, "test-card-123")
 	if err != nil {
@@ -105,8 +111,8 @@ func TestGetAlternatives_MultipleForSameCard(t *testing.T) {
 func TestGetAlternatives_OnlyReturnsMatchingID(t *testing.T) {
 	db := openTestDB(t)
 
-	server.InsertAlternative(db, "card-a", "file1.png")
-	server.InsertAlternative(db, "card-b", "file2.png")
+	server.InsertAlternative(db, "card-a", "Card A", "file1.png")
+	server.InsertAlternative(db, "card-b", "Card B", "file2.png")
 
 	results, err := server.GetAlternatives(db, "card-a")
 	if err != nil {
@@ -117,5 +123,32 @@ func TestGetAlternatives_OnlyReturnsMatchingID(t *testing.T) {
 	}
 	if results[0].ScryfallID != "card-a" {
 		t.Errorf("expected scryfall_id 'card-a', got %q", results[0].ScryfallID)
+	}
+}
+
+func TestGetCardsWithAlternatives(t *testing.T) {
+	db := openTestDB(t)
+
+	server.InsertAlternative(db, "card-a", "Card A", "file1.png")
+	server.InsertAlternative(db, "card-a", "Card A", "file2.png")
+	server.InsertAlternative(db, "card-b", "Card B", "file3.png")
+
+	cards, err := server.GetCardsWithAlternatives(db)
+	if err != nil {
+		t.Fatalf("GetCardsWithAlternatives returned error: %v", err)
+	}
+	if len(cards) != 2 {
+		t.Fatalf("expected 2 cards, got %d", len(cards))
+	}
+
+	names := map[string]string{}
+	for _, c := range cards {
+		names[c.ScryfallID] = c.Name
+	}
+	if names["card-a"] != "Card A" {
+		t.Errorf("expected card-a name 'Card A', got %q", names["card-a"])
+	}
+	if names["card-b"] != "Card B" {
+		t.Errorf("expected card-b name 'Card B', got %q", names["card-b"])
 	}
 }

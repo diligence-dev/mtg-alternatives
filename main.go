@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 
@@ -29,8 +30,13 @@ func main() {
 	}
 	defer db.Close()
 
+	frontend, err := fs.Sub(frontendFS, "frontend")
+	if err != nil {
+		log.Fatalf("Failed to create frontend sub FS: %v", err)
+	}
+
 	// Create and start server
-	srv := server.NewServer(db, uploadsDir, frontendFS)
+	srv := server.NewServer(db, uploadsDir, frontend)
 	addr := fmt.Sprintf(":%s", port)
 	if err := srv.ListenAndServe(addr); err != nil {
 		log.Fatalf("Server failed: %v", err)

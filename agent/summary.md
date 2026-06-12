@@ -24,8 +24,8 @@ mtg-alternatives/
 ├── main.go              # entry point, embeds frontend/, wires everything
 ├── server/
 │   ├── server.go        # Server struct, route registration, static serving
-│   ├── alternatives.go  # GET/POST /api/alternatives, sendJSONError helper
-│   └── db.go            # SQLite init, schema, queries
+│   ├── alternatives.go  # GET/POST /api/alternatives, GET /api/cards, sendJSONError helper
+│   └── db.go            # SQLite init, schema, migrations, queries
 ├── frontend/
 │   └── index.html       # SPA (inline CSS + JS, no framework)
 ├── uploads/             # user-uploaded images (gitignored)
@@ -57,10 +57,13 @@ Single `alternatives` table:
 |---|---|---|
 | `id` | INTEGER PK | Auto-increment |
 | `scryfall_id` | TEXT | Scryfall card UUID |
+| `name` | TEXT | Card name (from Scryfall) |
 | `filename` | TEXT | Stored filename in uploads/ |
 | `uploaded_at` | DATETIME | Default CURRENT_TIMESTAMP |
 
 Index on `scryfall_id`.
+
+Migration: `InitDB` automatically adds the `name` column if missing (for databases created before the column existed).
 
 ## API Endpoints
 
@@ -70,9 +73,13 @@ Returns `{ "alternatives": [{ "id", "url", "uploaded_at" }] }`.
 
 ### POST /api/alternatives
 
-Multipart form: `scryfall_id` (string) + `image` (file). Max 5MB, accepts PNG/JPEG/WebP.
+Multipart form: `scryfall_id` (string), `name` (string), `image` (file). Max 5MB, accepts PNG/JPEG/WebP.
 
 Returns 201 with created alternative record.
+
+### GET /api/cards
+
+Returns `{ "cards": [{ "scryfall_id", "name" }] }` — all distinct cards that have at least one alternative uploaded.
 
 ### GET /uploads/{filename}
 
@@ -101,20 +108,19 @@ fly deploy
 ## Key Design Decisions
 
 - Frontend is embedded via `go:embed` in `main.go` (not `server/`) because embed paths cannot use `..`
+- `fs.Sub` is used to strip the `frontend/` prefix so the SPA is served at `/` (not `/frontend/`)
 - `Server` receives `fs.FS` for frontend rather than embedding directly in the package
 - All error responses are JSON (`{ "error": "..." }`) — frontend always parses JSON
 - Scryfall search is called directly from the browser — no server-side proxy needed since Scryfall's API is CORS-friendly and requires no authentication
 - Double-faced cards (DFC) detected via `card_faces` — hover flips to show the back
 - Upload file cleanup on DB insert failure
-- Card names are not displayed or stored — cards are identified by image only (scryfall_id is the sole identifier)
-- "Has alternative" filter toggle: when checked, Scryfall query is augmented with `id:` constraints so only cards with uploaded alternatives appear in results. When unchecked, the raw query is sent as-is. Default is checked with empty query on page load (shows all cards with alternatives via `/cards/collection`)
-- `buildSearchQuery` extracted into `frontend/search.js` as a pure function, tested with `node --test frontend/search.test.js`
+- Card names are stored in the database alongside scryfall_id, provided by the frontend from Scryfall API data
+- Search results are sent as raw user query to Scryfall (not augmented). Frontend partitions results using `/api/cards` into two sections: cards with alternatives shown first, then a divider "The following cards have no alternatives yet", then remaining cards
 
 ## Testing
 
 ```sh
-go test ./server/tests/         # Go backend tests (20 tests)
-node --test frontend/search.test.js  # JS frontend tests (5 tests)
+go test ./server/tests/         # Go backend tests (24 tests)
 ```
 
 ## Known Limitations / Future Work

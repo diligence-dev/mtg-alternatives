@@ -68,7 +68,6 @@ func (s *Server) getAlternatives(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) uploadAlternative(w http.ResponseWriter, r *http.Request) {
-	// Limit upload size to 5 MB
 	r.Body = http.MaxBytesReader(w, r.Body, 5*1024*1024)
 	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil {
 		log.Printf("Failed to parse multipart form: %v", err)
@@ -79,6 +78,12 @@ func (s *Server) uploadAlternative(w http.ResponseWriter, r *http.Request) {
 	scryfallID := r.FormValue("scryfall_id")
 	if scryfallID == "" {
 		sendJSONError(w, "scryfall_id is required", http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	if name == "" {
+		sendJSONError(w, "name is required", http.StatusBadRequest)
 		return
 	}
 
@@ -117,7 +122,7 @@ func (s *Server) uploadAlternative(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	alt, err := InsertAlternative(s.db, scryfallID, filename)
+	alt, err := InsertAlternative(s.db, scryfallID, name, filename)
 	if err != nil {
 		os.Remove(dstPath)
 		log.Printf("Failed to insert alternative: %v", err)
@@ -133,4 +138,21 @@ func (s *Server) uploadAlternative(w http.ResponseWriter, r *http.Request) {
 			UploadedAt: alt.UploadedAt.Format("2006-01-02T15:04:05Z07:00"),
 		},
 	})
+}
+
+func (s *Server) handleCards(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	cards, err := GetCardsWithAlternatives(s.db)
+	if err != nil {
+		log.Printf("Failed to fetch cards: %v", err)
+		sendJSONError(w, "Failed to fetch cards", http.StatusInternalServerError)
+		return
+	}
+
+	if cards == nil {
+		cards = []CardEntry{}
+	}
+
+	json.NewEncoder(w).Encode(map[string][]CardEntry{"cards": cards})
 }

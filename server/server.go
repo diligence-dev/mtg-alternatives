@@ -28,6 +28,7 @@ func NewServer(db *sql.DB, uploadsDir string, frontend fs.FS) *Server {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/alternatives", s.handleAlternatives)
+	s.mux.HandleFunc("/api/cards", s.handleCards)
 
 	uploadsFS := http.Dir(s.uploadsDir)
 	s.mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(uploadsFS)))
@@ -42,7 +43,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ListenAndServe(addr string) error {
-	fmt.Printf("server running - http://localhost%s/frontend\n", addr)
+	fmt.Printf("server running - http://localhost%s\n", addr)
 	return http.ListenAndServe(addr, s)
 }
 

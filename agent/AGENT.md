@@ -4,7 +4,7 @@ Create single-page web app where users can find and upload alternative images of
 # bootstrapping
 - read @agent/summary.md for code overview
 - never build manually (i.e. never run `go build` or `make build`), assume `air` is running, if it is not, run `air`
-- server url: http://localhost:8080/frontend
+- server url: http://localhost:8080
 - say "done" once you have finished all tasks and all necessary checks succeeded
 
 # values
