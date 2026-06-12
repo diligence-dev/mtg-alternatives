@@ -29,6 +29,8 @@ mtg-alternatives/
 ├── frontend/
 │   └── index.html       # SPA (inline CSS + JS, no framework)
 ├── uploads/             # user-uploaded images (gitignored)
+├── Dockerfile           # multi-stage build for Fly.io (CGO for sqlite3)
+├── fly.toml             # Fly.io deployment config with persistent volume
 ├── go.mod / go.sum
 ├── .gitignore
 └── agent/               # agent planning docs
@@ -80,6 +82,22 @@ Serves uploaded files directly.
 
 Serves the embedded SPA from `frontend/`.
 
+## Deployment (Fly.io)
+
+- `Dockerfile` — multi-stage build: `golang:1.24-alpine` with GCC for CGO, minimal `alpine` runtime
+- `fly.toml` — deploys to `ams` region, persistent volume `mtg_data` mounted at `/data`
+- Production env: `DB_PATH=/data/data.db`, `UPLOADS_DIR=/data/uploads`
+- Auto-stops machines when idle, auto-starts on incoming requests
+
+### Deploy steps
+
+```sh
+fly auth login
+fly apps create mtg-alternatives
+fly volumes create mtg_data --region ams --size 1
+fly deploy
+```
+
 ## Key Design Decisions
 
 - Frontend is embedded via `go:embed` in `main.go` (not `server/`) because embed paths cannot use `..`
@@ -89,10 +107,18 @@ Serves the embedded SPA from `frontend/`.
 - Double-faced cards (DFC) detected via `card_faces` — hover flips to show the back
 - Upload file cleanup on DB insert failure
 - Card names are not displayed or stored — cards are identified by image only (scryfall_id is the sole identifier)
+- "Has alternative" filter toggle: when checked, Scryfall query is augmented with `id:` constraints so only cards with uploaded alternatives appear in results. When unchecked, the raw query is sent as-is. Default is checked with empty query on page load (shows all cards with alternatives via `/cards/collection`)
+- `buildSearchQuery` extracted into `frontend/search.js` as a pure function, tested with `node --test frontend/search.test.js`
+
+## Testing
+
+```sh
+go test ./server/tests/         # Go backend tests (20 tests)
+node --test frontend/search.test.js  # JS frontend tests (5 tests)
+```
 
 ## Known Limitations / Future Work
 
-- No pagination on Scryfall results (first page only, up to 175 cards)
 - No rate limiting on Scryfall requests (they ask for 50-100ms between requests)
 - No authentication or authorization
 - No image resizing or optimization
