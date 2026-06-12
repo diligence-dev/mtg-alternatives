@@ -424,6 +424,7 @@
             loadingDiv.style.display = 'block';
             resultsDiv.innerHTML = '';
             resultsDiv.className = 'card-grid';
+            resultsDiv.style.display = '';
             showMoreSection.style.display = 'none';
             detailSection.classList.remove('visible');
             errorMessage.style.display = 'none';
@@ -455,6 +456,13 @@
             if (allCards.length === 0) {
                 resultsDiv.textContent = 'No results found';
                 resultsDiv.className = 'no-alternatives';
+                return;
+            }
+
+            if (allCards.length === 1 && !scryfallHasMore) {
+                resultsDiv.style.display = 'none';
+                showMoreSection.style.display = 'none';
+                selectCard(allCards[0]);
                 return;
             }
 

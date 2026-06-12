@@ -33,7 +33,7 @@ Create single-page web app where users can find and upload alternative images of
 
 ## test first
 before implementing any new logic or a new route in a web app:
-1. write test, run tests, new test must fail; don't continue unless tests ran and new test failed
+1. write test, run tests (`go test ./server/tests/`), new test must fail; don't continue unless tests ran and new test failed
 2. implement, run tests, all must succeed; don't continue/finish unless all tests succeed, including test from step 1
 
 ## clean code
