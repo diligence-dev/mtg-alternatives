@@ -326,7 +326,7 @@
         let displayedWithoutAlts = 0;
         let scryfallHasMore = false;
         let scryfallNextPage = null;
-        let altScryfallIds = new Set();
+        let cardNamesWithAlts = new Set();
         let browseMode = false;
         let browsePage = 1;
         let browseTotal = 0;
@@ -380,25 +380,27 @@
 
         function toCard(raw) {
             return {
-                id: raw.id,
                 name: getCardName(raw),
                 image: getCardImage(raw),
                 back_image: getCardBackImage(raw),
             };
         }
 
+        function scryfallImageUrl(name) {
+            return `https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}&format=image&version=normal`;
+        }
+
         function cardEntryToCard(entry) {
             return {
-                id: entry.scryfall_id,
                 name: entry.name,
-                image: `https://api.scryfall.com/cards/${entry.scryfall_id}?format=image&version=normal`,
+                image: scryfallImageUrl(entry.name),
             };
         }
 
         function createCardElement(card) {
             const cardEl = document.createElement('div');
             cardEl.className = 'card';
-            cardEl.dataset.scryfallId = card.id;
+            cardEl.dataset.cardName = card.name;
 
             const img = document.createElement('img');
             img.src = card.image;
@@ -432,7 +434,7 @@
             const withAlts = [];
             const withoutAlts = [];
             for (const card of cards) {
-                if (altScryfallIds.has(card.id)) {
+                if (cardNamesWithAlts.has(card.name)) {
                     withAlts.push(card);
                 } else {
                     withoutAlts.push(card);
@@ -513,7 +515,7 @@
                     await loadBrowsePage();
                 } else {
                     const cards = await fetchCardsWithAlternatives();
-                    altScryfallIds = new Set(cards.map(c => c.scryfall_id));
+                    cardNamesWithAlts = new Set(cards.map(c => c.name));
 
                     const response = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`);
                     const data = await response.json();
@@ -620,7 +622,7 @@
             selectedCard = card;
 
             document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
-            const cardEl = document.querySelector(`.card[data-scryfall-id="${CSS.escape(card.id)}"]`);
+            const cardEl = document.querySelector(`.card[data-card-name="${CSS.escape(card.name)}"]`);
             if (cardEl) cardEl.classList.add('selected');
 
             detailSection.classList.add('visible');
@@ -638,16 +640,16 @@
                 detailImg.onmouseleave = null;
             }
 
-            await loadAlternatives(card.id);
+            await loadAlternatives(card.name);
         }
 
-        async function loadAlternatives(scryfallId) {
+        async function loadAlternatives(name) {
             alternativesLoading.style.display = 'block';
             alternativesGrid.innerHTML = '';
             noAlternatives.style.display = 'none';
 
             try {
-                const response = await fetch(`/api/alternatives?scryfall_id=${scryfallId}`);
+                const response = await fetch(`/api/alternatives?name=${encodeURIComponent(name)}`);
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -701,7 +703,6 @@
             uploadBtn.textContent = 'Uploading...';
 
             const formData = new FormData();
-            formData.append('scryfall_id', selectedCard.id);
             formData.append('name', selectedCard.name);
             formData.append('image', file);
 
@@ -717,8 +718,8 @@
                     throw new Error(data.error || 'Upload failed');
                 }
 
-                altScryfallIds.add(selectedCard.id);
-                await loadAlternatives(selectedCard.id);
+                cardNamesWithAlts.add(selectedCard.name);
+                await loadAlternatives(selectedCard.name);
 
                 fileInput.value = '';
                 showError('Alternative artwork uploaded successfully!');

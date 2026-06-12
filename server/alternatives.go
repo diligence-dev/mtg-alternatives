@@ -43,13 +43,13 @@ func (s *Server) handleAlternatives(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getAlternatives(w http.ResponseWriter, r *http.Request) {
-	scryfallID := r.URL.Query().Get("scryfall_id")
-	if scryfallID == "" {
-		sendJSONError(w, "scryfall_id parameter is required", http.StatusBadRequest)
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		sendJSONError(w, "name parameter is required", http.StatusBadRequest)
 		return
 	}
 
-	alts, err := GetAlternatives(s.db, scryfallID)
+	alts, err := GetAlternatives(s.db, name)
 	if err != nil {
 		log.Printf("Failed to fetch alternatives: %v", err)
 		sendJSONError(w, "Failed to fetch alternatives", http.StatusInternalServerError)
@@ -73,12 +73,6 @@ func (s *Server) uploadAlternative(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil {
 		log.Printf("Failed to parse multipart form: %v", err)
 		sendJSONError(w, "File too large (max 5MB)", http.StatusBadRequest)
-		return
-	}
-
-	scryfallID := r.FormValue("scryfall_id")
-	if scryfallID == "" {
-		sendJSONError(w, "scryfall_id is required", http.StatusBadRequest)
 		return
 	}
 
@@ -123,7 +117,7 @@ func (s *Server) uploadAlternative(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	alt, err := InsertAlternative(s.db, scryfallID, name, filename)
+	alt, err := InsertAlternative(s.db, name, filename)
 	if err != nil {
 		os.Remove(dstPath)
 		log.Printf("Failed to insert alternative: %v", err)

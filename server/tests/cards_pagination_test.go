@@ -13,7 +13,7 @@ func TestCardsPagination_Defaults(t *testing.T) {
 	srv := newTestServer(t)
 
 	for i := 0; i < 35; i++ {
-		server.InsertAlternative(srv.DB(), "card-"+string(rune('A'+i)), "Card "+string(rune('A'+i)), "file.png")
+		server.InsertAlternative(srv.DB(), "Card "+string(rune('A'+i)), "file.png")
 	}
 
 	req := httptest.NewRequest("GET", "/api/cards", nil)
@@ -41,7 +41,7 @@ func TestCardsPagination_SecondPage(t *testing.T) {
 	srv := newTestServer(t)
 
 	for i := 0; i < 35; i++ {
-		server.InsertAlternative(srv.DB(), "card-"+string(rune('A'+i)), "Card "+string(rune('A'+i)), "file.png")
+		server.InsertAlternative(srv.DB(), "Card "+string(rune('A'+i)), "file.png")
 	}
 
 	req := httptest.NewRequest("GET", "/api/cards?page=2&limit=30", nil)
@@ -69,7 +69,7 @@ func TestCardsPagination_CustomLimit(t *testing.T) {
 	srv := newTestServer(t)
 
 	for i := 0; i < 10; i++ {
-		server.InsertAlternative(srv.DB(), "card-"+string(rune('A'+i)), "Card "+string(rune('A'+i)), "file.png")
+		server.InsertAlternative(srv.DB(), "Card "+string(rune('A'+i)), "file.png")
 	}
 
 	req := httptest.NewRequest("GET", "/api/cards?limit=5", nil)

@@ -15,7 +15,7 @@ import (
 	"github.com/diligence-dev/mtg-alternatives/server"
 )
 
-func TestGetAlternatives_MissingScryfallID(t *testing.T) {
+func TestGetAlternatives_MissingName(t *testing.T) {
 	srv := newTestServer(t)
 
 	req := httptest.NewRequest("GET", "/api/alternatives", nil)
@@ -28,7 +28,7 @@ func TestGetAlternatives_MissingScryfallID(t *testing.T) {
 
 	var body server.ErrorResponse
 	json.Unmarshal(w.Body.Bytes(), &body)
-	if body.Error != "scryfall_id parameter is required" {
+	if body.Error != "name parameter is required" {
 		t.Fatalf("unexpected error: %q", body.Error)
 	}
 }
@@ -36,7 +36,7 @@ func TestGetAlternatives_MissingScryfallID(t *testing.T) {
 func TestGetAlternatives_ReturnsEmptyList(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := httptest.NewRequest("GET", "/api/alternatives?scryfall_id=test-card", nil)
+	req := httptest.NewRequest("GET", "/api/alternatives?name=Lightning+Bolt", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -56,10 +56,10 @@ func TestGetAlternatives_ReturnsEmptyList(t *testing.T) {
 func TestGetAlternatives_ReturnsStoredAlternatives(t *testing.T) {
 	srv := newTestServer(t)
 
-	server.InsertAlternative(srv.DB(), "card-1", "Lightning Bolt", "image1.png")
-	server.InsertAlternative(srv.DB(), "card-1", "Lightning Bolt", "image2.png")
+	server.InsertAlternative(srv.DB(), "Lightning Bolt", "image1.png")
+	server.InsertAlternative(srv.DB(), "Lightning Bolt", "image2.png")
 
-	req := httptest.NewRequest("GET", "/api/alternatives?scryfall_id=card-1", nil)
+	req := httptest.NewRequest("GET", "/api/alternatives?name=Lightning+Bolt", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -82,7 +82,7 @@ func TestGetAlternatives_ReturnsStoredAlternatives(t *testing.T) {
 func TestGetAlternatives_DeleteMethod(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := httptest.NewRequest("DELETE", "/api/alternatives?scryfall_id=test", nil)
+	req := httptest.NewRequest("DELETE", "/api/alternatives?name=test", nil)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -91,33 +91,15 @@ func TestGetAlternatives_DeleteMethod(t *testing.T) {
 	}
 }
 
-func TestUpload_MissingScryfallID(t *testing.T) {
+func TestUpload_MissingName(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := newUploadRequest(t, "", "Lightning Bolt", "test.png", "image/png", []byte("data"))
+	req := newUploadRequest(t, "", "test.png", "image/png", []byte("data"))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)
-	}
-
-	var body server.ErrorResponse
-	json.Unmarshal(w.Body.Bytes(), &body)
-	if body.Error != "scryfall_id is required" {
-		t.Fatalf("unexpected error: %q", body.Error)
-	}
-}
-
-func TestUpload_MissingName(t *testing.T) {
-	srv := newTestServer(t)
-
-	req := newUploadRequest(t, "card-1", "", "test.png", "image/png", []byte("data"))
-	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
 	}
 
 	var body server.ErrorResponse
@@ -132,7 +114,6 @@ func TestUpload_MissingFile(t *testing.T) {
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	writer.WriteField("scryfall_id", "card-1")
 	writer.WriteField("name", "Lightning Bolt")
 	writer.Close()
 
@@ -155,7 +136,7 @@ func TestUpload_MissingFile(t *testing.T) {
 func TestUpload_WrongFileType(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := newUploadRequest(t, "card-1", "Card Name", "test.gif", "image/gif", []byte("GIF89a fake"))
+	req := newUploadRequest(t, "Card Name", "test.gif", "image/gif", []byte("GIF89a fake"))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -173,7 +154,7 @@ func TestUpload_WrongFileType(t *testing.T) {
 func TestUpload_Success(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := newUploadRequest(t, "card-1", "Lightning Bolt", "test.png", "image/png", []byte("fake png data"))
+	req := newUploadRequest(t, "Lightning Bolt", "test.png", "image/png", []byte("fake png data"))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -201,7 +182,7 @@ func TestUpload_Success(t *testing.T) {
 		t.Fatal("uploaded file was not saved to disk")
 	}
 
-	results, _ := server.GetAlternatives(srv.DB(), "card-1")
+	results, _ := server.GetAlternatives(srv.DB(), "Lightning Bolt")
 	if len(results) != 1 {
 		t.Fatalf("expected 1 DB record, got %d", len(results))
 	}
@@ -213,7 +194,7 @@ func TestUpload_Success(t *testing.T) {
 func TestUpload_FilenameIsUUID(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := newUploadRequest(t, "card-1", "Lightning Bolt", "my-art.png", "image/png", []byte("data"))
+	req := newUploadRequest(t, "Lightning Bolt", "my-art.png", "image/png", []byte("data"))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -234,7 +215,7 @@ func TestUpload_FilenameIsUUID(t *testing.T) {
 func TestUpload_JpegAccepted(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := newUploadRequest(t, "card-1", "Lightning Bolt", "test.jpg", "image/jpeg", []byte("fake jpeg data"))
+	req := newUploadRequest(t, "Lightning Bolt", "test.jpg", "image/jpeg", []byte("fake jpeg data"))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -246,7 +227,7 @@ func TestUpload_JpegAccepted(t *testing.T) {
 func TestUpload_WebpAccepted(t *testing.T) {
 	srv := newTestServer(t)
 
-	req := newUploadRequest(t, "card-1", "Lightning Bolt", "test.webp", "image/webp", []byte("fake webp data"))
+	req := newUploadRequest(t, "Lightning Bolt", "test.webp", "image/webp", []byte("fake webp data"))
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, req)
 
@@ -258,8 +239,8 @@ func TestUpload_WebpAccepted(t *testing.T) {
 func TestCardsWithAlternativesEndpoint(t *testing.T) {
 	srv := newTestServer(t)
 
-	server.InsertAlternative(srv.DB(), "card-a", "Card A", "file1.png")
-	server.InsertAlternative(srv.DB(), "card-b", "Card B", "file2.png")
+	server.InsertAlternative(srv.DB(), "Card A", "file1.png")
+	server.InsertAlternative(srv.DB(), "Card B", "file2.png")
 
 	req := httptest.NewRequest("GET", "/api/cards", nil)
 	w := httptest.NewRecorder()
@@ -277,27 +258,23 @@ func TestCardsWithAlternativesEndpoint(t *testing.T) {
 		t.Fatalf("expected 2 cards, got %d", len(body.Cards))
 	}
 
-	names := map[string]string{}
+	names := map[string]bool{}
 	for _, c := range body.Cards {
-		names[c.ScryfallID] = c.Name
+		names[c.Name] = true
 	}
-	if names["card-a"] != "Card A" {
-		t.Errorf("expected card-a name 'Card A', got %q", names["card-a"])
+	if !names["Card A"] {
+		t.Error("expected card 'Card A'")
 	}
-	if names["card-b"] != "Card B" {
-		t.Errorf("expected card-b name 'Card B', got %q", names["card-b"])
+	if !names["Card B"] {
+		t.Error("expected card 'Card B'")
 	}
 }
 
-func newUploadRequest(t *testing.T, scryfallID, name, filename, contentType string, data []byte) *http.Request {
+func newUploadRequest(t *testing.T, name, filename, contentType string, data []byte) *http.Request {
 	t.Helper()
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-
-	if scryfallID != "" {
-		writer.WriteField("scryfall_id", scryfallID)
-	}
 
 	if name != "" {
 		writer.WriteField("name", name)

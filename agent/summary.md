@@ -56,30 +56,29 @@ Single `alternatives` table:
 | Column | Type | Notes |
 |---|---|---|
 | `id` | INTEGER PK | Auto-increment |
-| `scryfall_id` | TEXT | Scryfall card UUID |
-| `name` | TEXT | Card name (from Scryfall) |
+| `name` | TEXT | Card name (unique identifier) |
 | `filename` | TEXT | Stored filename in uploads/ |
 | `uploaded_at` | DATETIME | Default CURRENT_TIMESTAMP |
 
-Index on `scryfall_id`.
+Index on `name`.
 
-Migration: `InitDB` automatically adds the `name` column if missing (for databases created before the column existed).
+Migration: `InitDB` automatically drops the legacy `scryfall_id` column if present (for databases created before the migration to name-based identifiers).
 
 ## API Endpoints
 
-### GET /api/alternatives?scryfall_id={id}
+### GET /api/alternatives?name={name}
 
 Returns `{ "alternatives": [{ "id", "url", "uploaded_at" }] }`.
 
 ### POST /api/alternatives
 
-Multipart form: `scryfall_id` (string), `name` (string), `image` (file). Max 5MB, accepts PNG/JPEG/WebP.
+Multipart form: `name` (string), `image` (file). Max 5MB, accepts PNG/JPEG/WebP.
 
 Returns 201 with created alternative record.
 
 ### GET /api/cards?page={page}&limit={limit}
 
-Returns `{ "cards": [{ "scryfall_id", "name" }], "total": N }` — paginated distinct cards with at least one alternative. Default page=1, limit=30, max limit=100. Ordered by most recent upload first.
+Returns `{ "cards": [{ "name" }], "total": N }` — paginated distinct cards with at least one alternative. Default page=1, limit=30, max limit=100. Ordered by most recent upload first.
 
 ### GET /uploads/{filename}
 
@@ -114,9 +113,9 @@ fly deploy
 - Scryfall search is called directly from the browser — no server-side proxy needed since Scryfall's API is CORS-friendly and requires no authentication
 - Double-faced cards (DFC) detected via `card_faces` — hover flips to show the back
 - Upload file cleanup on DB insert failure
-- Card names are stored in the database alongside scryfall_id, provided by the frontend from Scryfall API data
+- Card names are used as the unique identifier instead of Scryfall IDs. Card images are fetched from Scryfall's named card image URL (`/cards/named?fuzzy={name}&format=image&version=normal`)
 - Search results are sent as raw user query to Scryfall (not augmented). Frontend partitions results using `/api/cards` into two sections: cards with alternatives shown first, then a divider "The following cards have no alternatives yet", then remaining cards
-- Empty search query shows all cards with alternatives, paginated via `/api/cards` endpoint (page size 30). Card images are fetched from Scryfall's image redirect URL (`/cards/{id}?format=image&version=normal`)
+- Empty search query shows all cards with alternatives, paginated via `/api/cards` endpoint (page size 30)
 - On page load, an empty search is automatically submitted to show the browse view
 
 ## Testing

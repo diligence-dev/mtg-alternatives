@@ -9,15 +9,13 @@ import (
 
 type Alternative struct {
 	ID         int       `json:"id"`
-	ScryfallID string    `json:"scryfall_id"`
 	Name       string    `json:"name"`
 	Filename   string    `json:"filename"`
 	UploadedAt time.Time `json:"uploaded_at"`
 }
 
 type CardEntry struct {
-	ScryfallID string `json:"scryfall_id"`
-	Name       string `json:"name"`
+	Name string `json:"name"`
 }
 
 type CardsPage struct {
@@ -34,38 +32,46 @@ func InitDB(path string) (*sql.DB, error) {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS alternatives (
 			id          INTEGER PRIMARY KEY AUTOINCREMENT,
-			scryfall_id TEXT NOT NULL,
-			name        TEXT NOT NULL DEFAULT '',
+			name        TEXT NOT NULL,
 			filename    TEXT NOT NULL,
 			uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
-		CREATE INDEX IF NOT EXISTS idx_scryfall_id ON alternatives(scryfall_id);
+		CREATE INDEX IF NOT EXISTS idx_name ON alternatives(name);
 	`)
 	if err != nil {
 		return nil, err
 	}
 
-	migrateAddName(db)
+	migrateDropScryfallID(db)
 
 	return db, nil
 }
 
-func migrateAddName(db *sql.DB) {
-	row := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('alternatives') WHERE name='name'")
+func migrateDropScryfallID(db *sql.DB) {
+	row := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('alternatives') WHERE name='scryfall_id'")
 	var count int
-	if err := row.Scan(&count); err != nil || count > 0 {
+	if err := row.Scan(&count); err != nil || count == 0 {
 		return
 	}
-	db.Exec("ALTER TABLE alternatives ADD COLUMN name TEXT NOT NULL DEFAULT ''")
+	db.Exec(`CREATE TABLE alternatives_new (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		name        TEXT NOT NULL,
+		filename    TEXT NOT NULL,
+		uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`)
+	db.Exec(`INSERT INTO alternatives_new (id, name, filename, uploaded_at) SELECT id, name, filename, uploaded_at FROM alternatives`)
+	db.Exec(`DROP TABLE alternatives`)
+	db.Exec(`ALTER TABLE alternatives_new RENAME TO alternatives`)
+	db.Exec(`CREATE INDEX idx_name ON alternatives(name)`)
 }
 
-func GetAlternatives(db *sql.DB, scryfallID string) ([]Alternative, error) {
+func GetAlternatives(db *sql.DB, name string) ([]Alternative, error) {
 	rows, err := db.Query(`
-		SELECT id, scryfall_id, name, filename, uploaded_at
+		SELECT id, name, filename, uploaded_at
 		FROM alternatives
-		WHERE scryfall_id = ?
+		WHERE name = ?
 		ORDER BY uploaded_at DESC
-	`, scryfallID)
+	`, name)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +80,7 @@ func GetAlternatives(db *sql.DB, scryfallID string) ([]Alternative, error) {
 	var alternatives []Alternative
 	for rows.Next() {
 		var alt Alternative
-		if err := rows.Scan(&alt.ID, &alt.ScryfallID, &alt.Name, &alt.Filename, &alt.UploadedAt); err != nil {
+		if err := rows.Scan(&alt.ID, &alt.Name, &alt.Filename, &alt.UploadedAt); err != nil {
 			return nil, err
 		}
 		alternatives = append(alternatives, alt)
@@ -83,12 +89,12 @@ func GetAlternatives(db *sql.DB, scryfallID string) ([]Alternative, error) {
 	return alternatives, rows.Err()
 }
 
-func InsertAlternative(db *sql.DB, scryfallID, name, filename string) (Alternative, error) {
+func InsertAlternative(db *sql.DB, name, filename string) (Alternative, error) {
 	now := time.Now().UTC().Truncate(time.Second)
 	result, err := db.Exec(`
-		INSERT INTO alternatives (scryfall_id, name, filename, uploaded_at)
-		VALUES (?, ?, ?, ?)
-	`, scryfallID, name, filename, now)
+		INSERT INTO alternatives (name, filename, uploaded_at)
+		VALUES (?, ?, ?)
+	`, name, filename, now)
 	if err != nil {
 		return Alternative{}, err
 	}
@@ -100,7 +106,6 @@ func InsertAlternative(db *sql.DB, scryfallID, name, filename string) (Alternati
 
 	return Alternative{
 		ID:         int(id),
-		ScryfallID: scryfallID,
 		Name:       name,
 		Filename:   filename,
 		UploadedAt: now,
@@ -109,9 +114,9 @@ func InsertAlternative(db *sql.DB, scryfallID, name, filename string) (Alternati
 
 func GetCardsWithAlternatives(db *sql.DB) ([]CardEntry, error) {
 	rows, err := db.Query(`
-		SELECT DISTINCT scryfall_id, name
+		SELECT DISTINCT name
 		FROM alternatives
-		ORDER BY scryfall_id
+		ORDER BY name
 	`)
 	if err != nil {
 		return nil, err
@@ -121,7 +126,7 @@ func GetCardsWithAlternatives(db *sql.DB) ([]CardEntry, error) {
 	var cards []CardEntry
 	for rows.Next() {
 		var c CardEntry
-		if err := rows.Scan(&c.ScryfallID, &c.Name); err != nil {
+		if err := rows.Scan(&c.Name); err != nil {
 			return nil, err
 		}
 		cards = append(cards, c)
@@ -132,14 +137,14 @@ func GetCardsWithAlternatives(db *sql.DB) ([]CardEntry, error) {
 
 func GetCardsWithAlternativesPaginated(db *sql.DB, page, limit int) (CardsPage, error) {
 	var total int
-	err := db.QueryRow(`SELECT COUNT(DISTINCT scryfall_id) FROM alternatives`).Scan(&total)
+	err := db.QueryRow(`SELECT COUNT(DISTINCT name) FROM alternatives`).Scan(&total)
 	if err != nil {
 		return CardsPage{}, err
 	}
 
 	offset := (page - 1) * limit
 	rows, err := db.Query(`
-		SELECT DISTINCT scryfall_id, name
+		SELECT DISTINCT name
 		FROM alternatives
 		ORDER BY uploaded_at DESC
 		LIMIT ? OFFSET ?
@@ -152,7 +157,7 @@ func GetCardsWithAlternativesPaginated(db *sql.DB, page, limit int) (CardsPage, 
 	var cards []CardEntry
 	for rows.Next() {
 		var c CardEntry
-		if err := rows.Scan(&c.ScryfallID, &c.Name); err != nil {
+		if err := rows.Scan(&c.Name); err != nil {
 			return CardsPage{}, err
 		}
 		cards = append(cards, c)
